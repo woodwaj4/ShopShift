@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shop Shift</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f7f9;
+      padding: 30px;
+      color: #333;
+    }
+    h1 {
+      color: #2b6777;
+      text-align: center;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      margin: 0 auto 30px auto;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #2b6777;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #1f4a53;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #2b6777;
+      color: white;
+    }
+    .total {
+      text-align: right;
+      font-weight: bold;
+      margin-top: 20px;
+      font-size: 18px;
+      color: #2b6777;
+    }
+  </style>
+</head>
+<body>
+  <h1>Shop Shift - Grocery List Tracker</h1>
+
+  <form id="groceryForm">
+    <input type="text" id="itemName" placeholder="Item name" required />
+    <input type="text" id="store" placeholder="Store" required />
+    <input type="number" id="price" placeholder="Price ($)" step="0.01" required />
+    <input type="number" id="quantity" placeholder="Quantity" required />
+    <button type="submit">Add Item</button>
+  </form>
+
+  <table id="groceryTable">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Store</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Total</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <p class="total" id="totalCost">Total Cost: $0.00</p>
+
+  <script>
+    const form = document.getElementById('groceryForm');
+    const tableBody = document.querySelector('#groceryTable tbody');
+    const totalCostEl = document.getElementById('totalCost');
+
+    let items = JSON.parse(localStorage.getItem('groceryItems')) || [];
+
+    function renderTable() {
+      tableBody.innerHTML = '';
+      let total = 0;
+      items.forEach((item, index) => {
+        const row = document.createElement('tr');
+        const itemTotal = (item.price * item.quantity).toFixed(2);
+        total += parseFloat(itemTotal);
+        row.innerHTML = `
+          <td>${item.itemName}</td>
+          <td>${item.store}</td>
+          <td>$${item.price.toFixed(2)}</td>
+          <td>${item.quantity}</td>
+          <td>$${itemTotal}</td>
+          <td><button onclick="deleteItem(${index})">❌</button></td>
+        `;
+        tableBody.appendChild(row);
+      });
+      totalCostEl.textContent = `Total Cost: $${total.toFixed(2)}`;
+      localStorage.setItem('groceryItems', JSON.stringify(items));
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const itemName = document.getElementById('itemName').value;
+      const store = document.getElementById('store').value;
+      const price = parseFloat(document.getElementById('price').value);
+      const quantity = parseInt(document.getElementById('quantity').value);
+
+      items.push({ itemName, store, price, quantity });
+      renderTable();
+      form.reset();
+    });
+
+    function deleteItem(index) {
+      items.splice(index, 1);
+      renderTable();
+    }
+
+    renderTable();
+  </script>
+</body>
+</html>
