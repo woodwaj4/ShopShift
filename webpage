@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shop Shift - Test Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f7f9;
+      padding: 40px;
+    }
+    h1 {
+      color: #2b6777;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      text-decoration: none;
+      color: white;
+      background-color: #2b6777;
+      padding: 10px 15px;
+      border-radius: 6px;
+    }
+    a:hover {
+      background-color: #1f4a53;
+    }
+  </style>
+</head>
+<body>
+  <h1>This is a Test Page for Shop Shift</h1>
+  <p>You can use this page to experiment with new sections, layouts, or features.</p>
+
+  <a href="index.html">⬅ Back to Home</a>
+</body>
+</html>
