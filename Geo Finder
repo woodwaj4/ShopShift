@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Geo Finder — Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-sA+rqwJ1gWv3G8zq1x3bB5SJlqkHXJY4fYp2A9g/0Po=" crossorigin=""/>
+  <style>
+    :root{
+      --accent:#2b7cff;
+      --muted:#6b7280;
+      --bg:#f7fafc;
+      --card:#ffffff;
+    }
+    html,body,#map{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:var(--bg);
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+    .app {
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      height:100vh;
+    }
+    .panel {
+      padding:18px;
+      background:linear-gradient(180deg,#fff,#fbfdff);
+      box-shadow: 0 0 0 1px rgba(15,23,42,0.04);
+      border-right:1px solid rgba(15,23,42,0.03);
+      overflow:auto;
+    }
+    .panel h1{
+      margin:0 0 8px 0;
+      font-size:18px;
+    }
+    .muted{color:var(--muted); font-size:13px;}
+    .controls {margin-top:12px; display:grid; gap:8px;}
+    input[type="text"], select {
+      width:100%;
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid rgba(15,23,42,0.08);
+      background:var(--card);
+      font-size:14px;
+    }
+    .row{display:flex; gap:8px; align-items:center;}
+    .btn{
+      background:var(--accent);
+      color:white;
+      padding:8px 10px;
+      border-radius:8px;
+      border:none;
+      cursor:pointer;
+      font-weight:600;
+      font-size:14px;
+    }
+    .small{font-size:13px; padding:6px 8px;}
+    .list {
+      margin-top:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .store-card{
+      background:var(--card);
+      border-radius:10px;
+      padding:10px;
+      box-shadow: 0 6px 14px rgba(6,8,15,0.04);
+      cursor:pointer;
+      border:1px solid rgba(15,23,42,0.03);
+    }
+    .store-card h3{margin:0; font-size:15px}
+    .store-meta{font-size:13px; color:var(--muted); margin-bottom:6px;}
+    .price-tag{
+      display:inline-block;
+      background:#eef2ff;
+      color:var(--accent);
+      padding:4px 8px;
+      border-radius:8px;
+      font-weight:700;
+      font-size:13px;
+    }
+    #map { height: 100%; }
+    .footer {
+      margin-top:12px;
+      font-size:13px;
+      color:var(--muted);
+    }
+    @media(max-width:920px){
+      .app{grid-template-columns:1fr;}
+      .panel{position:relative; height:360px;}
+      #map{height:calc(100vh - 360px);}
+    }
+    /* small helper */
+    .hint{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel" id="panel">
+      <h1>Grocery Geo Finder</h1>
+      <div class="muted">Compare store prices near you — simple and fast.</div>
+
+      <div class="controls">
+        <label class="hint">Search item (e.g. milk, eggs, bread)</label>
+        <input id="itemInput" type="text" placeholder="Enter item name e.g. milk" />
+
+        <div class="row">
+          <div style="flex:1">
+            <label class="hint">Radius (miles)</label>
+            <input id="radiusInput" type="range" min="1" max="50" value="10" />
+            <div class="hint" id="radiusLabel">10 miles</div>
+          </div>
+          <button id="locBtn" class="btn small">Use My Location</button>
+        </div>
+
+        <div class="row">
+          <button id="searchBtn" class="btn">Find Best Prices</button>
+          <button id="resetBtn" class="small" style="background:#eef2f3;color:#065f46;border-radius:8px">Reset</button>
+        </div>
+
+        <div class="row" style="margin-top:6px">
+          <label class="hint">Sort by</label>
+          <select id="sortSelect">
+            <option value="distance">Nearest</option>
+            <option value="price">Cheapest for item</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="list" id="results">
+        <!-- store cards inserted here -->
+      </div>
+
+      <div class="footer">
+        <div>Tip: Click a store marker on the map or card to open directions.</div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o9N1j7v6f3rQJzFQq1p0q8bJwYf6b3q4f5F75Y3u0Ew="
+    crossorigin=""></script>
+
+  <script>
+    /****************************************************************
+     * Grocery Geo Finder - Single-file demo
+     * - Drop in as index.html
+     * - Edit 'stores' array below with real data
+     ****************************************************************/
+
+    // ---------- Sample store data ----------
+    // Each store: id, name, lat, lon, address, prices (object item->price)
+    // Edit/add stores here for your project.
+    const stores = [
+      { id:1, name:"FreshMart - Downtown", lat:40.730610, lon:-73.935242, address:"123 Main St", prices:{ milk:3.49, eggs:2.99, bread:2.49, "bananas":0.59 } },
+      { id:2, name:"ValueGrocer", lat:40.740610, lon:-73.925242, address:"56 Elm Ave", prices:{ milk:3.19, eggs:3.29, bread:2.19, "bananas":0.69 } },
+      { id:3, name:"Corner Fresh", lat:40.722610, lon:-73.945242, address:"9 Market St", prices:{ milk:3.89, eggs:2.79, bread:2.59, "bananas":0.49 } },
+      { id:4, name:"Student Saver Foods", lat:40.750610, lon:-73.955242, address:"200 Campus Rd", prices:{ milk:2.99, eggs:2.49, bread:2.29, "bananas":0.39 } },
+      { id:5, name:"SuperLocal", lat:40.720000, lon:-73.915000, address:"77 River Blvd", prices:{ milk:3.09, eggs:3.09, bread:2.79, "bananas":0.55 } }
+    ];
+
+    // ---------- Utilities ----------
+    function toMiles(km){ return km * 0.621371; }
+    function toKm(miles){ return miles / 0.621371; }
+
+    // Haversine distance (km)
+    function haversineKm(lat1, lon1, lat2, lon2){
+      const R = 6371; // km
+      const dLat = (lat2-lat1) * Math.PI/180;
+      const dLon = (lon2-lon1) * Math.PI/180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // Round price nicely
+    function fmtPrice(p){
+      if (p === undefined || p === null) return "N/A";
+      return "$" + (Math.round(p * 100) / 100).toFixed(2);
+    }
+
+    // ---------- Initialize Leaflet map ----------
+    const map = L.map('map', { zoomControl: true }).setView([40.730610, -73.935242], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // marker layer group
+    const markers = L.layerGroup().addTo(map);
+
+    // store id -> marker
+    const markerById = {};
+
+    // panel elements
+    const itemInput = document.getElementById('itemInput');
+    const radiusInput = document.getElementById('radiusInput');
+    const radiusLabel = document.getElementById('radiusLabel');
+    const locBtn = document.getElementById('locBtn');
+    const searchBtn = document.getElementById('searchBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const resultsDiv = document.getElementById('results');
+    const sortSelect = document.getElementById('sortSelect');
+
+    radiusInput.addEventListener('input', () => radiusLabel.textContent = radiusInput.value + " miles");
+
+    // user location state
+    let userLocation = { lat: 40.730610, lon: -73.935242 }; // fallback center
+    let userMarker = null;
+    let userCircle = null;
+
+    // add store markers
+    function plotStores(){
+      markers.clearLayers();
+      Object.keys(markerById).forEach(k => delete markerById[k]);
+
+      stores.forEach(s => {
+        const m = L.marker([s.lat, s.lon]).addTo(markers);
+        const priceList = Object.entries(s.prices).map(([k,v]) => `<div><strong>${k}</strong>: ${fmtPrice(v)}</div>`).join('');
+        m.bindPopup(`<strong>${s.name}</strong><div class="muted">${s.address}</div><hr style="margin:6px 0">${priceList}
+          <div style="margin-top:6px"><a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}">Directions</a></div>`);
+        markerById[s.id] = m;
+      });
+    }
+
+    plotStores();
+
+    // show / move user location
+    function setUserLocation(lat, lon){
+      userLocation = {lat, lon};
+      if (userMarker) userMarker.setLatLng([lat, lon]);
+      else {
+        userMarker = L.circleMarker([lat, lon], { radius:8, fillColor:"#111827", color:"#fff", weight:2, fillOpacity:1 }).addTo(map);
+      }
+      // radius circle
+      const radiusKm = toKm(Number(radiusInput.value));
+      if (userCircle) userCircle.setLatLng([lat, lon]).setRadius(radiusKm*1000);
+      else userCircle = L.circle([lat, lon], { radius: radiusKm*1000, color:"#2b7cff", opacity:0.2 }).addTo(map);
+
+      // center map if small screen or first use
+      if (window.innerWidth < 920) map.setView([lat,lon], 13);
+    }
+
+    // attempt to get real geolocation
+    function attemptGeolocation(){
+      if (!navigator.geolocation) { alert("Geolocation not supported — using default location."); return; }
+      navigator.geolocation.getCurrentPosition(pos => {
+        setUserLocation(pos.coords.latitude, pos.coords.longitude);
+        map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+      }, err => {
+        console.warn("Geolocation failed:", err.message);
+        alert("Couldn't get your location. Use the map or default location.");
+      }, { timeout: 8000 });
+    }
+
+    locBtn.addEventListener('click', () => attemptGeolocation());
+
+    // compute results based on item & radius
+    function computeResults(){
+      const itemRaw = itemInput.value.trim().toLowerCase();
+      const radiusMiles = Number(radiusInput.value);
+
+      // map stores -> compute distance & check if item exists
+      const enriched = stores.map(s => {
+        const distKm = haversineKm(userLocation.lat, userLocation.lon, s.lat, s.lon);
+        const distMiles = toMiles(distKm);
+        const price = (() => {
+          // exact match key or search within keys (simple fuzzy)
+          const keys = Object.keys(s.prices);
+          const exact = keys.find(k => k.toLowerCase() === itemRaw);
+          if (exact) return s.prices[exact];
+          // find key that contains the term
+          const contains = keys.find(k => k.toLowerCase().includes(itemRaw));
+          if (contains) return s.prices[contains];
+          return null;
+        })();
+
+        return {...s, distMiles, price};
+      });
+
+      // filter by radius and by whether item is available (if user entered item)
+      let filt
